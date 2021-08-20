@@ -638,6 +638,7 @@ function App() {
       <span>Auto:</span>
       <${AutoButton} onText="Cancel Find" offText="Find" loop=${findArtifacts} />
       <${AutoButton} onText="Cancel Withdraw" offText="Withdraw" loop=${withdrawArtifacts} />
+	  <span style='marginLeft:10px;' id='message'>message</span>
     </div>
   `;
 }
@@ -692,17 +693,19 @@ function captureTargetPlanet(pTarget, myPlanetsArray, maxDistributeEnergyPercent
 			
 			//console.log('>>captureTargetPlanet-2:['+(count)+']Level=' + pFrom.planetLevel + ',Sent' + energySent + ', p=' + (energySent / pFrom.energy * 100) + '%');
 			df.move(pFrom.locationId, pTarget.locationId, energySent, 0);
+			sentCount++;
 			
 			if(energySentSum >= energyForAcquire)
 				break;
 			
-			sentCount++;
 			if(sentCount > 3) break;
 		}
 		
 		if(energySentSum == 0)
-			console.log('>>captureTargetPlanet-3:['+(count)+']Cant Find Any Near Planet..');
-		
+			message.innerText = 'Cant Find Any Near Planet..';
+		else
+			message.innerText = 'Sent:' + sentCount;
+
 		return energySentSum;
 }
 function capturePlanets(pFrom, pTarget, maxDistributeEnergyPercent = 100, minimumEnergyAllowed = 0) {
