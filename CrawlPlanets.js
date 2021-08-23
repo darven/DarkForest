@@ -1,4 +1,4 @@
-// Crawl Planets V0.1
+// Crawl Planets V0.2
 //
 // Capture unowned planets around you!
 // modified from https://plugins.zkga.me/ ...don't know how fork work...
@@ -332,6 +332,7 @@ function capturePlanets(fromId, minCaptureLevel, maxCaptureLevel, maxDistributeE
         // Remember its a tuple of candidates and their distance
         const candidate = candidates_[i++][0];
 		
+		if(planetType == -1 && candidate.planetType == 4) continue;
 		if(planetType > -1 && candidate.planetType != planetType) continue;
 
         // Rejected if has unconfirmed pending arrivals
