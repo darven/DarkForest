@@ -1,4 +1,4 @@
-// Artifactory v0.31
+// Artifactory v0.33
 // The artifactory plugin is modified from https://plugins.zkga.me/
 // 1.Add "Fire" to capture target planet
 
@@ -31,7 +31,12 @@ import {
 } from "https://cdn.skypack.dev/@darkforest_eth/constants"
 
 import {
-  BiomeNames
+  ArtifactType,
+  ArtifactTypeNames,
+  ArtifactRarity,
+  ArtifactRarityNames,
+  BiomeNames,
+  PlanetTypeNames,
 } from "https://cdn.skypack.dev/@darkforest_eth/types"
 
 // 30 seconds
@@ -48,7 +53,7 @@ function isMine(planet) {
 }
 
 function canDeposit(planet) {
-  return planet && isMine(planet) && !planet.heldArtifactId
+  return planet && isMine(planet) && !planet.heldArtifactId && planet.planetType == 3
 }
 
 function calcBonus(bonus) {
@@ -265,7 +270,7 @@ function Unfound({ selected }) {
   let [lastLocationId, setLastLocationId] = useState(null);
 
   let planets = myPlanetsWithFindable()
-    .filter(planet => !planet.hasTriedFindingArtifact && (planet.prospectedBlockNumber === undefined || !prospectExpired(currentBlockNumber, planet.prospectedBlockNumber)))
+    .filter(planet => !planet.hasTriedFindingArtifact && planet.planetLevel >= pMinLevel.value && (planet.prospectedBlockNumber === undefined || !prospectExpired(currentBlockNumber, planet.prospectedBlockNumber)))
 
   let planetsChildren = planets.map(planet => {
     let planetEntry = {
@@ -304,7 +309,7 @@ function Unfound({ selected }) {
 }
 
 // TODO: Bonuses in this panel?
-function Withdraw({ selected }) {
+function Withdraw_bak({ selected }) {
   if (!selected) {
     return;
   }
@@ -355,6 +360,165 @@ function Withdraw({ selected }) {
   `;
 }
 
+function Withdraw({ selected }) {
+  if (!selected) {
+    return;
+  }
+
+  let artifactList = {
+    maxHeight: '300px',
+    overflowX: 'hidden',
+    overflowY: 'scroll',
+  };
+
+  let [depositing, setDepositing] = useState(false);
+
+  let [planet, setPlanet] = useState(ui.getSelectedPlanet);
+
+  useLayoutEffect(() => {
+    const sub = ui.selectedPlanetId$.subscribe(() => {
+      setPlanet(ui.getSelectedPlanet());
+    });
+
+    return sub.unsubscribe;
+  }, []);
+
+  //let artifacts = myArtifactsToDeposit();
+  //let artifacts = df.getMyArtifacts();
+				  //.sort((a1, a2) => a2.upgrade.energyGroMultiplier - a1.upgrade.energyGroMultiplier);
+//console.log('>>Deposit-1:' + artifacts[30].upgrade.energyGroMultiplier + ' / ' + parseInt(artifacts[20].upgrade.energyGroMultiplier, 10));
+	let myArtifacts = df.getMyArtifacts();
+	let artifacts = [];
+	for(let artObj of myArtifacts){
+	    if(!artObj.onPlanetId) continue;
+
+		artifacts.push(artObj);
+	}
+
+
+	if(pMinLevel.value == 1)
+		artifacts.sort((a1, a2) => a2.artifactType - a1.artifactType);
+	else if(pMinLevel.value == 2)
+		artifacts.sort((a1, a2) => a2.upgrade.defMultiplier - a1.upgrade.defMultiplier);
+	else if(pMinLevel.value == 3)
+		artifacts.sort((a1, a2) => a2.upgrade.energyCapMultiplier - a1.upgrade.energyCapMultiplier);
+	else if(pMinLevel.value == 4)
+		artifacts.sort((a1, a2) => a2.upgrade.energyGroMultiplier - a1.upgrade.energyGroMultiplier);
+	else if(pMinLevel.value == 5)
+		artifacts.sort((a1, a2) => a2.upgrade.rangeMultiplier - a1.upgrade.rangeMultiplier);
+	else if(pMinLevel.value == 6)
+		artifacts.sort((a1, a2) => a2.upgrade.speedMultiplier - a1.upgrade.speedMultiplier);
+	else if(pMinLevel.value == 7)
+		artifacts.sort((a1, a2) => a2.onPlanetId - a1.onPlanetId);
+	else if(pMinLevel.value == 8)
+		artifacts.sort((a1, a2) => a2.onPlanetId - a1.onPlanetId);
+	else if(pMinLevel.value == 9)
+		artifacts.sort((a1, a2) => a2.onPlanetId - a1.onPlanetId);
+
+	
+
+  let artifactChildren = artifacts.map(artifact => {
+	  
+	
+    let button = {
+      marginLeft: 'auto',
+      opacity: depositing ? '0.5' : '1',
+    };
+    let {
+      defMultiplier,
+      energyCapMultiplier,
+      energyGroMultiplier,
+      rangeMultiplier,
+      speedMultiplier
+    } = artifact.upgrade;
+	//console.log('>>Deposit-2:['+artSortBy+']' + energyGroMultiplier);
+	
+	let {
+      onPlanetId,
+      lastActivated,
+      lastDeactivated
+    } = artifact;
+	
+	let [lastLocationId, setLastLocationId] = useState(null);
+    let wrapper = {
+      display: 'flex',
+      marginBottom: '10px',
+	  color: lastLocationId === onPlanetId ? 'pink' : '',
+    };
+	
+	//let onPlanetId = artifact.onPlanetId;
+	let artTypeName = ArtifactTypeNames[artifact.artifactType];
+	let rarityName = ArtifactRarityNames[artifact.rarity];
+	
+//console.log('>>Deposit-3:' + JSON.stringify(artifact));
+
+    let deposit = () => {
+      if (canDeposit(planet) && !depositing) {
+        // TODO: Fast depositing
+        setDepositing(true);
+        df.depositArtifact(planet.locationId, artifact.id);
+      }
+    }
+
+	let artLocation = (onPlanetId) ? '[Planet]' : '[Wallet]';
+	let isActived = '(N)';
+	if(lastActivated == 0)
+		isActived = '(-)';
+	else if(lastActivated > lastDeactivated)
+		isActived = '(Y)';
+	
+	function centerPlanet() {
+      let planet = df.getPlanetWithId(onPlanetId);
+	  if (planet) {
+        ui.centerPlanet(planet);
+		setLastLocationId(planet.locationId);
+      }
+    }
+	
+
+    return html`
+      <div key=${artifact.id} style=${wrapper}>
+	    <span>${artTypeName}</span>
+        <${Multiplier} Icon=${Defense} bonus=${defMultiplier} />
+        <${Multiplier} Icon=${Energy} bonus=${energyCapMultiplier} />
+        <${Multiplier} Icon=${EnergyGrowth} bonus=${energyGroMultiplier} />
+        <${Multiplier} Icon=${Range} bonus=${rangeMultiplier} />
+        <${Multiplier} Icon=${Speed} bonus=${speedMultiplier} />
+		<span onClick=${centerPlanet}>${artLocation}</span>
+		<span>${isActived}</span>
+		${(!onPlanetId && canDeposit(planet)) ? html`
+          <button style=${button} onClick=${deposit} disabled=${depositing}>
+            ${depositing ? 'Depositing...' : 'Deposit'}
+          </button>` : null}
+      </div>
+    `;
+  });
+
+	/*
+	if(pMinLevel.value == 1)
+		artifactChildren.sort((a1, a2) => a2.defMultiplier - a1.defMultiplier);
+	else if(pMinLevel.value == 2)
+		artifactChildren.sort((a1, a2) => a2.defMultiplier - a1.defMultiplier);
+	else if(pMinLevel.value == 3)
+		artifactChildren.sort((a1, a2) => a2.energyCapMultiplier - a1.energyCapMultiplier);
+	else if(pMinLevel.value == 4)
+		artifactChildren.sort((a1, a2) => a2.energyGroMultiplier - a1.energyGroMultiplier);
+	else if(pMinLevel.value == 5)
+		artifactChildren.sort((a1, a2) => a2.rangeMultiplier - a1.rangeMultiplier);
+	else if(pMinLevel.value == 6)
+		artifactChildren.sort((a1, a2) => a2.speedMultiplier - a1.speedMultiplier);
+	else if(pMinLevel.value == 7)
+		artifactChildren.sort((a1, a2) => a2.artLocation - a1.artLocation);
+	*/
+	
+	
+  return html`
+    <div style=${artifactList}>
+      ${artifactChildren.length ? artifactChildren : 'No artifacts to deposit.'}
+    </div>
+  `;
+}
+
 function Deposit({ selected }) {
   if (!selected) {
     return;
@@ -381,10 +545,8 @@ function Deposit({ selected }) {
   let artifacts = myArtifactsToDeposit();
 
   let artifactChildren = artifacts.map(artifact => {
-    let wrapper = {
-      display: 'flex',
-      marginBottom: '10px',
-    };
+    
+	
     let button = {
       marginLeft: 'auto',
       opacity: depositing ? '0.5' : '1',
@@ -397,6 +559,38 @@ function Deposit({ selected }) {
       speedMultiplier
     } = artifact.upgrade;
 
+	let wrapper = {
+      display: 'flex',
+      marginBottom: '10px',
+    };
+	
+	
+	let artTypeName = ArtifactTypeNames[artifact.artifactType];
+	let rarityName = ArtifactRarityNames[artifact.rarity];
+	rarityName = '[' + rarityName.substring(0, 1) + ']';
+
+	let rarityWrapper = {};
+	/*
+	console.log('>>Deposit-1:' + JSON.stringify(ArtifactRarity));
+	>>Deposit-1:{"Unknown":0,"Common":1,"Rare":2,"Epic":3,"Legendary":4,"Mythic":5}
+	*/
+	if(artifact.rarity == 2)
+		rarityWrapper = {
+			color: 'blue'
+		};
+	else if(artifact.rarity == 3)
+		rarityWrapper = {
+			color: 'purple'
+		};
+	else if(artifact.rarity == 4)
+		rarityWrapper = {
+			color: 'gold'
+		};
+	else if(artifact.rarity == 0)
+		rarityWrapper = {
+			color: 'white'
+		};
+
     let deposit = () => {
       if (canDeposit(planet) && !depositing) {
         // TODO: Fast depositing
@@ -407,6 +601,7 @@ function Deposit({ selected }) {
 
     return html`
       <div key=${artifact.id} style=${wrapper}>
+		<span style=${rarityWrapper}>${artTypeName}</span>
         <${Multiplier} Icon=${Energy} bonus=${energyCapMultiplier} />
         <${Multiplier} Icon=${EnergyGrowth} bonus=${energyGroMultiplier} />
         <${Multiplier} Icon=${Defense} bonus=${defMultiplier} />
@@ -426,6 +621,7 @@ function Deposit({ selected }) {
     </div>
   `;
 }
+
 
 function Untaken({ selected }) {
   if (!selected) {
@@ -464,9 +660,12 @@ function Untaken({ selected }) {
   }
 
   const planets = allPlanetsWithArtifacts()
-    .filter(isUnowned);
+    .filter(isUnowned)
+	.filter(p => p.planetLevel >= pMinLevel.value);
 
-  let myPlanetsArray = myPlanetsCache();
+  //let myPlanetsArray = myPlanetsCache();
+	let myPlanetsArray = Array.from(df.getMyPlanets())
+    .filter(p => p.planetLevel >= pMinLevel.value);
 	//console.log('>>Build Planet Cache:' + myPlanetsArray);
 	
   let planetsArray = planets.map(planet => {
@@ -475,7 +674,7 @@ function Untaken({ selected }) {
     let distanceFromTargeting = parseInt(Math.sqrt(Math.pow((x - centerX), 2) + Math.pow((y - centerY), 2)));
 
     return {
-      locationId: planet.locationId, biome: planet.biome, planetLevel: planet.planetLevel,
+      locationId: planet.locationId, biome: planet.biome, planetType: planet.planetType, planetLevel: planet.planetLevel,
       x, y, distanceFromTargeting
     };
   });
@@ -485,7 +684,8 @@ function Untaken({ selected }) {
   let planetsChildren = planetsArray.map(planet => {
 
     let { locationId, x, y, distanceFromTargeting, planetLevel } = planet;
-    let biome = BiomeNames[planet.biome];
+    //let biome = BiomeNames[planet.biome];
+	let pTypeName = PlanetTypeNames[planet.planetType];
 	//let nearestX = x;
 	//let nearestY = y;
 
@@ -534,7 +734,7 @@ function Untaken({ selected }) {
 	
 	let extraInfo = "[NA]";
 	
-    let text = `LV${planetLevel} ${biome} ${distanceFromTargeting} away ${extraInfo}`;
+    let text = `LV${planetLevel} ${pTypeName} ${distanceFromTargeting} away ${extraInfo}`;
     return html`
       <div key=${locationId} style=${planetEntry}>
         <span onClick=${centerPlanet}>${text}</span>
@@ -627,6 +827,17 @@ function App() {
       <button onClick=${() => setTab('withdraw')}>Withdraw</button>
       <button onClick=${() => setTab('deposit')}>Deposit</button>
       <button onClick=${() => setTab('untaken')}>Untaken</button>
+	  <select name="minLevel" id="pMinLevel">
+		<option value="1">Lv 1</option>
+		<option value="2">Lv 2</option>
+		<option value="3" selected>Lv 3</option>
+		<option value="4">Lv 4</option>
+		<option value="5">Lv 5</option>
+		<option value="6">Lv 6</option>
+		<option value="7">Lv 7</option>
+		<option value="8">Lv 8</option>
+		<option value="9">Lv 9</option>
+		</select>
     </div>
     <div>
       <${Unfound} selected=${tab === 'unfound'} />
@@ -674,7 +885,7 @@ function captureTargetPlanet(pTarget, myPlanetsArray, maxDistributeEnergyPercent
 			if (unconfirmedMoves.length !== 0) continue;
 			
 			//Skip if energy at low level
-			if(pFrom.energy / pFrom.energyCap < 0.75) continue;
+			if(pFrom.energy / pFrom.energyCap < 0.98) continue;
 
 			//Skip if energy inefficiency
 			energySent = (pFrom.planetLevel < 4) ? pFrom.energy - 1 : pFrom.energy * 0.75; //cant 100% energy...tx will be revert
